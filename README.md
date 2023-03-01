@@ -1,6 +1,6 @@
 # auto-tests README
 
-This is the README for your extension "auto-tests". After writing up a brief description, we recommend including the following sections.
+This extension automatically generates test files for all of your Javascript and Typescript files. It includes react testing library which detects a component and renders it to ease up your development. You can then hop into these tests and adjust them to your liking.
 
 ## Features
 

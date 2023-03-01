@@ -10,6 +10,10 @@
     "Other"
   ],
   "activationEvents": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karelhala/vs-code-auto-tests.git"
+  },
   "main": "./extension.js",
   "contributes": {
     "configuration": {
