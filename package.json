@@ -12,10 +12,35 @@
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "AutoTests",
+      "properties": {
+        "autotests.enable": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether autotests is enabled or not."
+        },
+        "autotests.filename": {
+          "scope": "resource",
+          "type": "string",
+          "default": "[filename].test.js",
+          "description": "Controls where and how tests will be saved."
+        },
+        "autotests.mocks": {
+          "scope": "resource",
+          "type": "string",
+          "default": "__mocks__/[filename].js",
+          "description": "Controls where and how mocks will be saved."
+        }
+      }
+    },
     "commands": [
       {
-        "command": "auto-tests.helloWorld",
-        "title": "Hello World"
+        "command": "auto-tests.generate",
+        "category": "AutoTests",
+        "title": "Generate test files"
       }
     ]
   },
