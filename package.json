@@ -6,10 +6,13 @@
   "engines": {
     "vscode": "^1.75.0"
   },
+  "publisher": "KarelHala",
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "*"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/karelhala/vs-code-auto-tests.git"
