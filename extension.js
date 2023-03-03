@@ -2,6 +2,26 @@
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require('vscode');
 
+function getNamedExports(text) {
+  const exports = text.match(new RegExp(/^export(?!\s+default)(\s+const)?(\s+async)?(\s+function)?\s+([\w\d_-]+)/, 'igm'));
+  return exports?.map((item) => {
+    const split = item.split(/\s/);
+    return split[split?.length - 1];
+  })
+}
+
+function hasDefaultExport(text) {
+  return text.match(new RegExp(/^export\s+default/, 'igm'))?.length > 0;
+}
+
+function getExportList(text) {
+  const exports = text.match(new RegExp(/^export\s*{([\s\w\d_,]+)/, 'igm'));
+  return exports?.flatMap((item) => {
+    const split = item.split('{');
+    return split[split?.length - 1].replace(/\s*/ig, '').split(',');
+  });
+}
+
 function getNames(document, range) {
   const start = range.start;
   const line = document.lineAt(start.line);
@@ -21,14 +41,33 @@ function getFileInfo(document) {
   return {folder, fileName, extension, symbolName};
 }
 
-function newInserts(names, symbolName) {
-  const newImports = `import { ${names?.join(', ')} } from './${symbolName}';\n`;
-  const newDescribes = names?.map((name) => `describe('${name}', () => {
+function newInserts(names, hasDefaultExport, symbolName) {
+  const defaultImport = `${symbolName[0].toUpperCase()}${symbolName.substring(1)}`;
+  let newImports = '';
+  if (names.filter(Boolean).length > 0) {
+    newImports = `import { ${names?.join(', ')} } from './${symbolName}';`;
+  }
+  if (hasDefaultExport) {
+    newImports = `${newImports.length > 0 ? `${newImports}\n` : ''}import ${defaultImport} from './${symbolName}';`
+  }
+  let newDescribes = '';
+  if (names.filter(Boolean).length > 0) {
+    newDescribes = names?.map((name) => `
+describe('${name}', () => {
     test('dummy test', () => {
       expect(${name}).toBeDefined();
     });
 });`)?.join('\n');
-  return [newImports, newDescribes];
+  }
+  if (hasDefaultExport) {
+    newDescribes = `${newDescribes.length > 0 ? `${newDescribes}\n` : ''}
+describe('${defaultImport}', () => {
+  test('dummy test', () => {
+    expect(${defaultImport}).toBeDefined();
+  });
+});`
+  }
+  return [newImports, `\n${newDescribes}`];
 }
 
 /**
@@ -44,20 +83,26 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('auto-tests.generate', async function () {
     const config = vscode.workspace.getConfiguration('autotests');
     const editor = vscode.window.activeTextEditor;
-    const names = getNames(editor.document, editor.selection);
-    const { symbolName, folder, fileName } = getFileInfo(editor.document);
+    const { symbolName, folder } = getFileInfo(editor.document);
     const newFileName = config.filename.replace('[filename]', symbolName);
     const filePath = vscode.Uri.file(`${folder}${newFileName}`);
     const workEdits = new vscode.WorkspaceEdit();
     workEdits.createFile(filePath, { ignoreIfExists: true });
     await vscode.workspace.applyEdit(workEdits);
-    const doc = await vscode.workspace.openTextDocument(filePath);
-    const [newImports, newDescribes] = newInserts(names, symbolName);
-    await vscode.window.showTextDocument(doc);
+    const newTestDoc = await vscode.workspace.openTextDocument(filePath);
+    const [newImports, newDescribes] = newInserts(
+      [
+        ...getNamedExports(editor.document.getText()) || [],
+        ...getExportList(editor.document.getText()) || []
+      ],
+      hasDefaultExport(editor.document.getText()),
+      symbolName,
+    );
+    // open new test doc
+    await vscode.window.showTextDocument(newTestDoc);
     const newTestFile = vscode.window.activeTextEditor;
     const lastPos = newTestFile.document.positionAt(newTestFile.document.lineCount);
     const firstPos = newTestFile.document.positionAt(1);
-    console.log(lastPos, firstPos);
     newTestFile.edit(builder => {
       builder.replace(firstPos, newImports);
       builder.replace(lastPos, newDescribes);
